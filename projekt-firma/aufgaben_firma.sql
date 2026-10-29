@@ -169,13 +169,21 @@ ORDER BY p.titel
 -- Wer arbeitet in der Abteilung, die das Projekt 'Neues Intranet' betreut?
 -- Verbinden Sie projekt -> abteilung -> mitarbeiter. Vorname und Nachname, nach Vorname.
 -- Erwartet: Anna Berger · Clara Winter · Eva Adler
-
-
+SELECT m.vorname, m.nachname
+FROM mitarbeiter m
+JOIN abteilung a ON a.id = m.abteilung_id
+JOIN projekt p ON a.id = p.abteilung_id
+WHERE p.titel = 'Neues Intranet'
+ORDER BY m.vorname;
 
 -- Aufgabe 17
 -- Welche Abteilungen haben (noch) kein Projekt? Alphabetisch.
 -- Erwartet: HR, Vertrieb
-
+SELECT a.name
+FROM abteilung a
+LEFT JOIN projekt p ON a.id = p.abteilung_id
+WHERE p.id IS NULL
+ORDER BY a.name;
 
 
 -- ===================================================================== TCL
@@ -184,12 +192,20 @@ ORDER BY p.titel
 -- und schreiben Sie die Änderung fest.
 -- Erwartet: Neues Intranet 15000 · Messeauftritt 13000
 
-
+BEGIN TRANSACTION;
+UPDATE projekt SET budget = budget - 5000 WHERE titel = 'Neues Intranet';
+UPDATE projekt SET budget = budget + 5000 WHERE titel = 'Messeauftritt';
+COMMIT;
 
 -- Aufgabe 19 (ROLLBACK)
 -- Öffnen Sie eine Transaktion, löschen Sie ALLE Projekte, zählen Sie nach,
 -- und nehmen Sie das Löschen zurück. Zählen Sie erneut.
 -- Erwartet: erst 0, nach dem ROLLBACK wieder 2
+BEGIN TRANSACTION;
+DELETE FROM projekt;
+SELECT COUNT(*) FROM projekt;
+ROLLBACK;
+SELECT COUNT(*) FROM projekt;
 
 
 
@@ -198,6 +214,13 @@ ORDER BY p.titel
 -- dann Projekt 2 auf 'aktiv'. Nehmen Sie nur die zweite Änderung zurück und schreiben Sie fest.
 -- Erwartet: Neues Intranet aktiv · Messeauftritt geplant
 
+BEGIN TRANSACTION;
+UPDATE projekt SET status = 'aktiv' WHERE id = 1;
+SAVEPOINT vor_messe;
+UPDATE projekt SET status = 'aktiv' WHERE id = 2;
+ROLLBACK TO vor_messe;
+COMMIT;
+SELECT titel, status FROM projekt; 
 
 
 -- Aufgabe 21 (ganz oder gar nicht)
@@ -205,3 +228,8 @@ ORDER BY p.titel
 -- Was passiert beim zweiten Befehl? Beenden Sie die Transaktion so, dass KEINE der beiden
 -- Änderungen gilt.
 -- Erwartet: CHECK constraint failed, danach unverändert 15000 / 13000
+
+BEGIN TRANSACTION;
+UPDATE projekt SET budget = budget + 20000 WHERE titel = 'Messeauftritt';
+UPDATE projekt SET budget = budget - 20000 WHERE titel = 'Neues Intranet';
+ROLLBACK;
