@@ -28,11 +28,19 @@
 --   status (Text bis 10 Zeichen, Standardwert 'geplant').
 -- Prüfen mit: .schema projekt
 
+CREATE TABLE projekt (
+    id INTEGER PRIMARY KEY,
+    titel VARCHAR(40) NOT NULL,
+    abteilung_id INTEGER REFERENCES abteilung(id) NOT NULL,
+    budget INTEGER CHECK (budget >= 0),
+    status VARCHAR(10) DEFAULT "geplant"
+    );
+.schema projekt
 
 
 -- Aufgabe 2 (ALTER)
 -- Die Tabelle mitarbeiter bekommt eine Spalte telefon (Text bis 20 Zeichen).
-
+ALTER TABLE mitarbeiter ADD COLUMN telefon VARCHAR(20);
 
 
 -- ===================================================================== DML
@@ -42,24 +50,27 @@
 --   2 'Messeauftritt'   -> Marketing, Budget  8000
 --   3 'Recruiting-Tag'  -> HR,        Budget  3000
 -- Erwartet: SELECT * FROM projekt;  -> 3 Zeilen, status überall 'geplant'
+INSERT INTO projekt (id, titel, abteilung_id, budget)
+VALUES (1, 'Neues Intranet', 1, 20000), (2, 'Messeauftritt', 4, 8000), (3, 'Recruiting-Tag', 2, 3000);
 
 
 
 -- Aufgabe 4 (UPDATE)
 -- Anna (id 1) bekommt die Telefonnummer '0351 1234-11'.
-
+UPDATE mitarbeiter SET telefon = '0351 1234-11' WHERE id = 1;
 
 
 -- Aufgabe 5 (UPDATE mit zwei Bedingungen)
 -- Alle Vertriebsmitarbeiter am Standort Dresden bekommen 100 EUR mehr Gehalt.
 -- Erwartet: 2 Zeilen geändert - Dirk 3200, Hakan 4000 (Felix in Leipzig bleibt 2900)
-
+UPDATE mitarbeiter SET gehalt = gehalt + 100 WHERE standort = 'Dresden' AND abteilung_id = 3;
 
 
 -- Aufgabe 6 (DELETE)
 -- Der Recruiting-Tag fällt aus. Löschen Sie das Projekt.
 -- Erwartet: SELECT COUNT(*) FROM projekt;  -> 2
-
+DELETE FROM projekt WHERE id = 3;
+SELECT COUNT(*) FROM projekt;
 
 
 -- Aufgabe 7 (Constraint testen)
@@ -67,6 +78,9 @@
 -- Welche Fehlermeldung erscheint - und warum?
 -- Erwartet: FOREIGN KEY constraint failed
 
+INSERT into projekt (titel, abteilung_id) VALUES ('Geisterprojekt', 99);
+
+-- DELETE FROM projekt WHERE titel = 'Geisterprojekt';
 
 
 -- ===================================================================== DQL
@@ -75,18 +89,25 @@
 -- höchstes Gehalt zuerst, bei Gleichstand alphabetisch nach Nachname.
 -- Erwartet: Eva Adler 4200 · Anna Berger 4200 · Hakan Yilmaz 4000
 
-
+SELECT vorname, nachname, gehalt
+FROM mitarbeiter
+WHERE gehalt > 3500
+ORDER BY gehalt DESC, nachname ASC;
 
 -- Aufgabe 9
 -- An welchen Standorten arbeitet die Firma? Jeden Standort nur einmal, alphabetisch.
 -- Erwartet: Dresden, Leipzig
-
+SELECT DISTINCT standort
+FROM mitarbeiter
+ORDER BY standort;
 
 
 -- Aufgabe 10
 -- Wer ist noch keiner Abteilung zugeordnet?
 -- Erwartet: Ida Lang      (Tipp: = NULL funktioniert nicht!)
-
+SELECT vorname, nachname
+FROM mitarbeiter
+WHERE abteilung_id IS NULL;
 
 
 -- ===================================================================== JOIN
@@ -94,13 +115,19 @@
 -- Vorname, Nachname und Abteilungsname aller Mitarbeiter, die eine Abteilung haben.
 -- Sortiert nach Abteilungsname, dann Nachname. Verwenden Sie Aliase (m, a).
 -- Erwartet: 8 Zeilen, beginnt mit Ben Hoffmann HR, Ida fehlt
-
+SELECT m.vorname, m.nachname, a.name
+FROM mitarbeiter m
+JOIN abteilung a ON m.abteilung_id = a.id
+ORDER BY a.name, m.nachname;
 
 
 -- Aufgabe 12 (LEFT JOIN)
 -- Vorname und Abteilungsname ALLER Mitarbeiter, sortiert nach id.
 -- Erwartet: 9 Zeilen, letzte Zeile: Ida | NULL
-
+SELECT m.vorname, a.name
+FROM mitarbeiter m
+LEFT JOIN abteilung a ON m.abteilung_id = a.id
+ORDER BY m.id;
 
 
 -- Aufgabe 13 (RIGHT JOIN)
@@ -109,19 +136,33 @@
 -- Sortiert nach a.id, dann Vorname.
 -- Erwartet: 9 Zeilen, letzte Zeile: Marketing | NULL
 -- Zusatzfrage: Wie lautet dieselbe Abfrage als LEFT JOIN?
+SELECT a.name, m.vorname
+FROM mitarbeiter m
+RIGHT JOIN abteilung a ON m.abteilung_id = a.id
+ORDER BY a.id, vorname;
 
+SELECT a.name, m.vorname
+FROM abteilung a
+LEFT JOIN mitarbeiter m ON m.abteilung_id = a.id
+ORDER BY a.id, vorname;
 
 
 -- Aufgabe 14 (Partnerlose finden)
 -- Welche Abteilung hat keine Mitarbeiter?   (LEFT JOIN + WHERE ... IS NULL)
 -- Erwartet: Marketing
-
+SELECT a.name
+FROM abteilung a
+LEFT JOIN mitarbeiter m ON a.id = m.abteilung_id
+WHERE m.id IS NULL;
 
 
 -- Aufgabe 15 (JOIN mit der neuen Tabelle)
 -- Titel, Abteilungsname und Budget aller Projekte, alphabetisch nach Titel.
 -- Erwartet: Messeauftritt | Marketing | 8000 · Neues Intranet | IT | 20000
-
+SELECT p.titel, a.name, p.budget
+FROM projekt p
+JOIN abteilung a ON a.id = p.abteilung_id
+ORDER BY p.titel
 
 
 -- Aufgabe 16 (drei Tabellen)
